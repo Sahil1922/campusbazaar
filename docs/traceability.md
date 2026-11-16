@@ -3,7 +3,7 @@
 Links every requirement to the code that implements it and the evidence that it works.
 Last checked: **15 November 2026**, after Sprint 4.
 
-- **Automated tests:** `server/test/*.test.js` — 134 tests, all passing, run against a real MySQL 8.0 database (`cd server && npm test`).
+- **Automated tests:** `server/test/*.test.js` — 138 tests, all passing, run against a real MySQL 8.0 database (`cd server && npm test`).
 - **Manual browser checks:** done for each sprint in a local test environment (desktop and 375 px phone width).
 - **Client automated tests:** `client/src/test/*.test.{js,jsx}` — 28 tests (login popup, Sell form, Start auction form, bidding, browse filters, banner carousel, services, formatting) (`cd client && npm test`).
 
@@ -47,7 +47,7 @@ Last checked: **15 November 2026**, after Sprint 4.
 | NFR-07 Performance (< 2 s) | Indexed queries, 24 results per page | Local measurement with 5,000 listings: searches/filters 0.02–0.07 s, unfiltered page ≈0.4–0.5 s, details 0.03 s | Met locally; not measured on hosting |
 | NFR-08 Usability | Responsive layout; every use-case alternate flow shows a message | Browser checks at desktop and phone width | Met manually; no automated UI tests |
 | NFR-09 Cost (free tier / ≈₹500 per month) | Single Node server + MySQL; photos on disk | — | Not verifiable until deployment |
-| NFR-10 Maintainability | ESLint (0 errors), 134 server tests, secrets only in `.env` | `npm run lint`, `npm test` | Met — 134 server and 28 client tests; client has 2 lint warnings (fast-refresh hints only) |
+| NFR-10 Maintainability | ESLint (0 errors), 138 server tests, secrets only in `.env` | `npm run lint`, `npm test` | Met — 138 server and 28 client tests; client has 2 lint warnings (fast-refresh hints only) |
 
 ## Gaps and open items
 
@@ -55,6 +55,6 @@ Last checked: **15 November 2026**, after Sprint 4.
 2. ~~Client automated tests~~ — added 16 Nov 2026 (now 28 tests). Pages not yet covered: messaging, admin, profile, notifications.
 3. **Rate limits** are not covered by automated tests (they are disabled in the test environment).
 4. ~~Open product decisions~~ — resolved 16 Nov 2026: no-bid auctions put the listing back on sale; suspended students' listings are hidden while suspended (`docs/business-rules.md`).
-5. **Deployment is not done:** choose hosting and an SMTP provider; use HTTPS (secure cookies switch on with `NODE_ENV=production`); keep `server/uploads/` on persistent storage; if the client is hosted on a different domain, CORS for the REST API is needed.
+5. **Deployment is prepared but not done** (16 Nov 2026: the API server serves the built site in production, security headers and proxy settings added, guide in `docs/deployment.md`, `production.test.js`). Still needed: choose hosting and an SMTP provider; use HTTPS (secure cookies switch on with `NODE_ENV=production`); keep `server/uploads/` on persistent storage; if the client is hosted on a different domain, CORS for the REST API is needed.
 6. **Single server process assumed:** the settlement timer is safe with several processes (row locks), but Socket.IO would need a shared adapter (for example Redis) to broadcast across processes.
 7. **Out of scope by project rules:** payment, escrow, shipping and dispute workflows after an auction.

@@ -55,6 +55,8 @@ The sample data used while building the frontend has been removed; every page no
 
 Which code and tests cover each requirement, plus known gaps: [docs/traceability.md](docs/traceability.md).
 
+Deploying to a server (build/start commands, production settings, launch checklist): [docs/deployment.md](docs/deployment.md).
+
 Rules the SRS leaves open (bid minimums, durations, categories, review and moderation rules) are in
 [docs/business-rules.md](docs/business-rules.md). The full 14-table schema is in
 [server/db/schema.sql](server/db/schema.sql).

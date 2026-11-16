@@ -39,12 +39,35 @@ if (isProduction && !smtpHost) {
 // Listing photos are stored on the server's disk (approved for Sprint 2).
 const uploadDir = path.resolve(optional('UPLOAD_DIR', fileURLToPath(new URL('../uploads', import.meta.url))));
 
+// In production the API server also serves the built React app (client/dist), so one process
+// runs the whole site on one origin (no CORS needed, session cookie stays same-site).
+const serveClient = optional('SERVE_CLIENT', isProduction ? 'true' : 'false') === 'true';
+const clientDistDir = path.resolve(optional('CLIENT_DIST_DIR', fileURLToPath(new URL('../../client/dist', import.meta.url))));
+
+// Number of reverse proxies in front of the app (e.g. 1 behind a hosting provider's HTTPS proxy).
+// Needed so rate limits see the visitor's real IP address.
+const trustProxy = Number(optional('TRUST_PROXY', '0'));
+if (!Number.isInteger(trustProxy) || trustProxy < 0) {
+  throw new Error('TRUST_PROXY must be a whole number (0 when the app is not behind a proxy)');
+}
+
+const clientOrigin = optional('CLIENT_ORIGIN', 'http://localhost:5173');
+if (isProduction && !clientOrigin.startsWith('https://')) {
+  console.warn(
+    `Warning: CLIENT_ORIGIN is ${clientOrigin}. In production it should be the site's https:// address — ` +
+      'session cookies are marked Secure and are only sent over HTTPS.',
+  );
+}
+
 export const config = Object.freeze({
   uploadDir,
+  serveClient,
+  clientDistDir,
+  trustProxy,
   nodeEnv,
   isProduction,
   port: Number(optional('PORT', '4000')),
-  clientOrigin: optional('CLIENT_ORIGIN', 'http://localhost:5173'),
+  clientOrigin,
   jwtSecret,
   sessionDays: 7,
   verificationHours: 24,
