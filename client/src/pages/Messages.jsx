@@ -5,6 +5,7 @@ import { ApiError } from '../api.js';
 import Icon from '../components/Icon.jsx';
 import { EmptyState, ErrorState, Loading } from '../components/ui.jsx';
 import { useAsync } from '../lib/useAsync.js';
+import { onMessagesChanged } from '../lib/socket.js';
 import { formatDateTime, formatPrice, initials, timeAgo } from '../lib/format.js';
 import { getConversation, listConversations, sendMessage } from '../services/messages.js';
 
@@ -15,10 +16,20 @@ function Thread({ listingId, buyerId, onSent }) {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
   const bottom = useRef(null);
+  const { reload: reloadThread } = thread;
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' });
   }, [thread.data?.messages.length]);
+
+  // Live updates: reload this conversation when the server says it changed (e.g. a new reply).
+  useEffect(
+    () =>
+      onMessagesChanged((change) => {
+        if (change?.listingId === Number(listingId) && change?.buyerId === Number(buyerId)) reloadThread();
+      }),
+    [listingId, buyerId, reloadThread],
+  );
 
   if (thread.loading && !thread.data) return <div className="thread"><Loading label="Loading conversation…" /></div>;
   if (thread.error) {
@@ -123,6 +134,9 @@ export default function Messages() {
   const conversations = useAsync(() => listConversations(user), [user]);
   const open = Boolean(listingId && buyerId);
   const { reload } = conversations;
+
+  // Live updates: refresh previews and unread dots whenever any of the user's conversations changes.
+  useEffect(() => onMessagesChanged(() => reload()), [reload]);
 
   return (
     <>

@@ -3,9 +3,9 @@
 Links every requirement to the code that implements it and the evidence that it works.
 Last checked: **15 November 2026**, after Sprint 4.
 
-- **Automated tests:** `server/test/*.test.js` — 138 tests, all passing, run against a real MySQL 8.0 database (`cd server && npm test`).
+- **Automated tests:** `server/test/*.test.js` — 141 tests, all passing, run against a real MySQL 8.0 database (`cd server && npm test`).
 - **Manual browser checks:** done for each sprint in a local test environment (desktop and 375 px phone width).
-- **Client automated tests:** `client/src/test/*.test.{js,jsx}` — 28 tests (login popup, Sell form, Start auction form, bidding, browse filters, banner carousel, services, formatting) (`cd client && npm test`).
+- **Client automated tests:** `client/src/test/*.test.{js,jsx}` — 30 tests (login popup, Sell form, Start auction form, bidding, live messages, browse filters, banner carousel, services, formatting) (`cd client && npm test`).
 
 ## Functional requirements (SRS)
 
@@ -15,7 +15,7 @@ Last checked: **15 November 2026**, after Sprint 4.
 | FR-02 Create Listing | UC-02 | `POST /api/listings` (multipart, ≤5 photos) | Sell an item | `listings.test.js` › UC-02: owned by the signed-in seller; price required, optional "negotiable" flag; browser-sent seller id ignored; every invalid field reported; invalid prices; unknown category; JPG/PNG stored and served; fake image rejected and nothing saved; >5 photos rejected |
 | FR-03 View Listings | UC-03 | `GET /api/listings`, `GET /api/listings/:id` | Home, browse, listing details | `listings.test.js` › UC-03/04: only available listings shown; removed/deleted/sold/ended-auction hidden; details with photos and seller rating; unavailable listing hidden from others |
 | FR-04 Search and Filter | UC-04 | `GET /api/listings?q=&category=&condition=&min=&max=&sort=&page=` | Header search, browse filters | `listings.test.js`: every word searched; `%`/`_` treated literally; category, condition, price range, price sort; invalid filters rejected; paging |
-| FR-05 Contact Seller / Send Message | UC-05 | `GET /api/messages/conversations`, `GET`/`POST /api/messages/:listingId/:buyerId`, `GET /api/messages/unread-count` | Messages, header badge | `messages.test.js`: buyer starts, seller replies; recipient set by server; unread tracking; strangers blocked; empty/long messages rejected; history kept but sending blocked when listing unavailable or seller suspended |
+| FR-05 Contact Seller / Send Message | UC-05 | `GET /api/messages/conversations`, `GET`/`POST /api/messages/:listingId/:buyerId`, `GET /api/messages/unread-count` | Messages, header badge | `messages.test.js`: buyer starts, seller replies; recipient set by server; unread tracking; strangers blocked; empty/long messages rejected; history kept but sending blocked when listing unavailable or seller suspended; live `messages:changed` event sent to both people only after the message is saved, never to others. `Messages.test.jsx`: new reply appears without refresh |
 | FR-06 Rate and Review | UC-06 | `GET /api/users/:id/reviews`, `POST /api/reviews` | Reviews section on listing details | `reviews.test.js`: review added and shown in profile activity; once per seller per listing; no self-review; only the listing's seller; invalid ratings; long comments |
 | FR-07 Start Auction | UC-07 | `POST /api/auctions` | Start auction | `auctions.test.js` › UC-07/08: server-set times; listing moves into auction; browser end time ignored; only own active listing, once; listing locked for editing |
 | FR-08 Set Auction Details | UC-08 | `POST /api/auctions` (starting price, increment, duration) | Start auction | `auctions.test.js`: invalid starting price, increment and duration reported; starting price above the listed price refused. `StartAuction.test.jsx`: pre-filled prices, suggested increment, explanation |
@@ -47,12 +47,12 @@ Last checked: **15 November 2026**, after Sprint 4.
 | NFR-07 Performance (< 2 s) | Indexed queries, 24 results per page | Local measurement with 5,000 listings: searches/filters 0.02–0.07 s, unfiltered page ≈0.4–0.5 s, details 0.03 s | Met locally; not measured on hosting |
 | NFR-08 Usability | Responsive layout; every use-case alternate flow shows a message | Browser checks at desktop and phone width | Met manually; no automated UI tests |
 | NFR-09 Cost (free tier / ≈₹500 per month) | Single Node server + MySQL; photos on disk | — | Not verifiable until deployment |
-| NFR-10 Maintainability | ESLint (0 errors), 138 server tests, secrets only in `.env` | `npm run lint`, `npm test` | Met — 138 server and 28 client tests; client has 2 lint warnings (fast-refresh hints only) |
+| NFR-10 Maintainability | ESLint (0 errors), 141 server tests, secrets only in `.env` | `npm run lint`, `npm test` | Met — 141 server and 30 client tests; client has 2 lint warnings (fast-refresh hints only) |
 
 ## Gaps and open items
 
 1. **NFRs are not in the SRS yet.** The table above uses the NFR list proposed before Sprint 1; the team should confirm it and add it to the SRS.
-2. ~~Client automated tests~~ — added 16 Nov 2026 (now 28 tests). Pages not yet covered: messaging, admin, profile, notifications.
+2. ~~Client automated tests~~ — added 16 Nov 2026 (now 30 tests). Pages not yet covered: messaging, admin, profile, notifications.
 3. **Rate limits** are not covered by automated tests (they are disabled in the test environment).
 4. ~~Open product decisions~~ — resolved 16 Nov 2026: no-bid auctions put the listing back on sale; suspended students' listings are hidden while suspended (`docs/business-rules.md`).
 5. **Deployment is prepared but not done** (16 Nov 2026: the API server serves the built site in production, security headers and proxy settings added, guide in `docs/deployment.md`, `production.test.js`). Still needed: choose hosting and an SMTP provider; use HTTPS (secure cookies switch on with `NODE_ENV=production`); keep `server/uploads/` on persistent storage; if the client is hosted on a different domain, CORS for the REST API is needed.

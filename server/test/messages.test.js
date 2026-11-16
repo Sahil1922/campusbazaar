@@ -1,6 +1,8 @@
 import request from 'supertest';
+import { io as connectSocket } from 'socket.io-client';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pool } from '../src/db.js';
+import { closeRealtime, initRealtime } from '../src/realtime.js';
 import { app, createUser, insertListing, resetDatabase } from './helpers.js';
 
 beforeEach(resetDatabase);
@@ -106,5 +108,66 @@ describe('UC-05 Contact Seller / Send Message', () => {
     const { buyer } = await setup();
     await buyer.agent.get(`/api/messages/999999/${buyer.user.id}`).expect(404);
     await buyer.agent.get('/api/messages/abc/1').expect(400);
+  });
+});
+
+describe('live message updates (Socket.IO)', () => {
+  let server;
+  let port;
+  const sockets = [];
+
+  beforeEach(async () => {
+    server = app.listen(0);
+    await new Promise((resolve) => server.once('listening', resolve));
+    port = server.address().port;
+    initRealtime(server);
+  });
+
+  afterEach(async () => {
+    for (const s of sockets.splice(0)) s.close();
+    await closeRealtime();
+  });
+
+  async function connectAs(email, password) {
+    const res = await request(app).post('/api/auth/sign-in').send({ email, password }).expect(200);
+    const cookie = res.headers['set-cookie'][0].split(';')[0];
+    const socket = connectSocket(`http://localhost:${port}`, { transports: ['websocket'], extraHeaders: { cookie }, reconnection: false });
+    sockets.push(socket);
+    await new Promise((resolve) => socket.once('connect', resolve));
+    return socket;
+  }
+
+  it('tells the recipient about a new message only after it is saved', async () => {
+    const { buyer, seller, listingId, path } = await setup();
+    const sellerSocket = await connectAs('seller@uni.test', seller.password);
+    const received = new Promise((resolve) => {
+      sellerSocket.once('messages:changed', async (payload) => {
+        const [[row]] = await pool.query('SELECT COUNT(*) AS n FROM messages');
+        resolve({ payload, saved: Number(row.n) });
+      });
+    });
+    await buyer.agent.post(path).send({ content: 'Is it still available?' }).expect(201);
+    const { payload, saved } = await received;
+    expect(payload).toEqual({ listingId, buyerId: buyer.user.id });
+    expect(saved).toBe(1);
+  });
+
+  it('does not tell students who are not in the conversation', async () => {
+    const { buyer, stranger, path } = await setup();
+    const strangerSocket = await connectAs('stranger@uni.test', stranger.password);
+    const heard = vi.fn();
+    strangerSocket.on('messages:changed', heard);
+    await buyer.agent.post(path).send({ content: 'Hello' }).expect(201);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it("updates the reader's other tabs when they read new messages", async () => {
+    const { buyer, seller, path } = await setup();
+    await buyer.agent.post(path).send({ content: 'Hi' }).expect(201);
+    const otherTab = await connectAs('seller@uni.test', seller.password);
+    const changed = new Promise((resolve) => otherTab.once('messages:changed', resolve));
+    await seller.agent.get(path).expect(200);
+    await changed;
   });
 });

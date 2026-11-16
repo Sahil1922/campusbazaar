@@ -4,6 +4,9 @@ import { afterEach } from 'vitest';
 
 afterEach(() => cleanup());
 
+// jsdom does not implement scrolling (used to keep the newest message in view).
+if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {};
+
 // jsdom does not implement matchMedia (used by the banner carousel).
 if (!window.matchMedia) {
   window.matchMedia = (query) => ({

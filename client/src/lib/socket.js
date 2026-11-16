@@ -47,3 +47,10 @@ export function onNotificationsChanged(listener) {
   s.on('notifications:changed', listener);
   return () => s.off('notifications:changed', listener);
 }
+
+/** listener({ listingId, buyerId }) runs when a conversation the user is in gets a new message or is read. */
+export function onMessagesChanged(listener) {
+  const s = getSocket();
+  s.on('messages:changed', listener);
+  return () => s.off('messages:changed', listener);
+}

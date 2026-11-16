@@ -4,6 +4,7 @@ import { pool, withTransaction } from '../db.js';
 import { HttpError, asyncHandler, parseInput } from '../http.js';
 import { requireAuth } from '../auth/session.js';
 import { perUserLimit } from '../limits.js';
+import { emitMessagesChanged } from '../realtime.js';
 
 // UC-05 Contact Seller / Send Message.
 // A conversation is identified by a listing and its buyer; the other participant is the listing's seller.
@@ -124,11 +125,13 @@ messagesRouter.get(
     if (messages.length === 0 && (me === sellerId || !AVAILABLE.includes(listing.status))) {
       throw new HttpError(404, 'This conversation does not exist.');
     }
-    await pool.execute(
+    const [read] = await pool.execute(
       `UPDATE messages m SET m.read_at = UTC_TIMESTAMP()
         WHERE ${IN_CONVERSATION} AND m.recipient_id = ? AND m.read_at IS NULL`,
       [...conversationParams(listingId, buyerId, sellerId), me],
     );
+    // Lets the reader's other open tabs update their unread badge.
+    if (read.affectedRows > 0) emitMessagesChanged([me], { listingId, buyerId });
 
     const other = me === buyerId ? { name: listing.seller_name, status: listing.seller_status } : { name: buyer.name, status: buyer.account_status };
     res.json({
@@ -155,7 +158,7 @@ messagesRouter.post(
     const { content } = parseInput(contentSchema, req.body);
     const me = req.user.id;
 
-    const message = await withTransaction(async (conn) => {
+    const { message, recipientId } = await withTransaction(async (conn) => {
       const { listing, sellerId, buyer } = await resolveConversation(conn, me, listingId, buyerId);
       if (!AVAILABLE.includes(listing.status)) {
         throw new HttpError(409, 'Messaging is unavailable because this listing is no longer available.');
@@ -175,9 +178,11 @@ messagesRouter.post(
         [listingId, me, recipientId, content],
       );
       const [[row]] = await conn.execute('SELECT id, content, sent_at FROM messages WHERE id = ?', [result.insertId]);
-      return row;
+      return { message: row, recipientId };
     });
 
+    // Only after the message is saved: the recipient (and the sender's other tabs) reload the conversation.
+    emitMessagesChanged([recipientId, me], { listingId, buyerId });
     res.status(201).json({ message: { id: Number(message.id), content: message.content, sentAt: message.sent_at, isMine: true } });
   }),
 );

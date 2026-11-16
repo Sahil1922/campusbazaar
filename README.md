@@ -44,7 +44,7 @@ Photos are saved in `server/uploads/` (set `UPLOAD_DIR` to change it) and served
 | UC-09 Place Bid / Participate in Auction | `POST /api/auctions/:id/bids`, `GET /api/auctions`, `GET /api/auctions/:id`, live auction page |
 | View Bids | Bid history on the auction page; the seller sees bidder names, other students see initials |
 | Receive Winner Notification | Server job ends due auctions every 5 s and notifies the winner; `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all` |
-| Real-time updates | Socket.IO on the API server (`auction:changed`, `notifications:changed`), authenticated with the session cookie |
+| Real-time updates | Socket.IO on the API server (`auction:changed`, `messages:changed`, `notifications:changed`), authenticated with the session cookie; new messages and unread badges update without a refresh |
 
 **How a bid is processed:** the auction row is locked (`SELECT … FOR UPDATE`), the bid is checked against
 the saved status, end time and current bid, the bid is stored and the auction updated, the transaction

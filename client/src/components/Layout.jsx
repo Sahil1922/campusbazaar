@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 import { hasRole, useAuth } from '../auth.jsx';
 import Icon from './Icon.jsx';
 import { onDataChange } from '../lib/events.js';
-import { onNotificationsChanged } from '../lib/socket.js';
+import { onMessagesChanged, onNotificationsChanged } from '../lib/socket.js';
 import { categoryStyle, useCategories } from '../lib/categories.js';
 import { useLoginPrompt } from '../lib/loginPrompt.js';
 import { unreadConversationCount } from '../services/messages.js';
@@ -109,11 +109,13 @@ function useCounts(user) {
         .catch(() => {});
     refresh();
     const off = onDataChange(refresh);
-    const offSocket = onNotificationsChanged(refresh);
+    const offNotifications = onNotificationsChanged(refresh);
+    const offMessages = onMessagesChanged(refresh);
     return () => {
       cancelled = true;
       off();
-      offSocket();
+      offNotifications();
+      offMessages();
     };
   }, [user, location.pathname]);
   return counts;
