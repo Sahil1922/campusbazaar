@@ -1,4 +1,8 @@
+import os from 'node:os';
+import path from 'node:path';
 import { testDb } from './test-db-config.js';
+
+process.env.UPLOAD_DIR = path.join(os.tmpdir(), 'campusbazaar-test-uploads');
 
 // Runs before each test file, before the app's config is imported.
 process.env.NODE_ENV = 'test';

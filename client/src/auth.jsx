@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from './api.js';
+import { disconnectSocket } from './lib/socket.js';
 
 const AuthContext = createContext(null);
 
@@ -25,6 +26,10 @@ export function AuthProvider({ children }) {
       setUser(null);
     }
   }, []);
+
+  // The Socket.IO connection is authenticated as whoever was signed in when it opened.
+  const userId = user?.id;
+  useEffect(() => () => disconnectSocket(), [userId]);
 
   const value = useMemo(() => ({ user, setUser, loading, signOut }), [user, loading, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

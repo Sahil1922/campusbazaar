@@ -5,3 +5,5 @@ coverage/
 .env.*
 !.env.example
 *.log
+# Uploaded listing photos (user content, not source code).
+server/uploads/

@@ -15,15 +15,19 @@ export class ApiError extends Error {
   }
 }
 
-/** Calls the CampusBazaar API. The session lives in an HttpOnly cookie, never in JavaScript. */
+/**
+ * Calls the CampusBazaar API. The session lives in an HttpOnly cookie, never in JavaScript.
+ * `body` may be a plain object (sent as JSON) or FormData (sent as multipart, e.g. with photos).
+ */
 export async function api(path, { method = 'GET', body } = {}) {
+  const isForm = body instanceof FormData;
   let response;
   try {
     response = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: body === undefined || isForm ? {} : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'Could not reach CampusBazaar. Check your connection and try again.');

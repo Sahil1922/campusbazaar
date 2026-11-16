@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { pool, withTransaction } from '../db.js';
 import { HttpError, asyncHandler, parseInput } from '../http.js';
 import { requireAuth, requireRole } from '../auth/session.js';
+import { moderationAdminRouter } from '../moderation/routes.js';
 
 const PAGE_SIZE = 20;
 
@@ -34,6 +35,9 @@ export const adminRouter = Router();
 
 // Every route below requires a signed-in administrator (UC-10–UC-12 business rules).
 adminRouter.use(requireAuth, requireRole('admin'));
+
+// UC-10 View Reports, UC-11 Remove Inappropriate Listings / Handle Complaints.
+adminRouter.use(moderationAdminRouter);
 
 /** UC-12 Manage Users: list users, optionally filtered by name/email and status. */
 adminRouter.get(

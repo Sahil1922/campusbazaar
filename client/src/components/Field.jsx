@@ -3,12 +3,13 @@ import { useId } from 'react';
 /** A labelled input with an optional error message announced to screen readers. */
 export default function Field({ label, error, hint, ...inputProps }) {
   const id = useId();
-  const describedBy = [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined;
+  const showHint = hint && !error;
+  const describedBy = [showHint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined;
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <input id={id} aria-invalid={Boolean(error)} aria-describedby={describedBy} {...inputProps} />
-      {hint && (
+      {showHint && (
         <p id={`${id}-hint`} className="hint">
           {hint}
         </p>

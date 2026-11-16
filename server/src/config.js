@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 function required(name) {
   const value = process.env[name];
@@ -34,7 +36,11 @@ if (isProduction && !smtpHost) {
   throw new Error('SMTP_HOST is required in production so verification emails can be sent');
 }
 
+// Listing photos are stored on the server's disk (approved for Sprint 2).
+const uploadDir = path.resolve(optional('UPLOAD_DIR', fileURLToPath(new URL('../uploads', import.meta.url))));
+
 export const config = Object.freeze({
+  uploadDir,
   nodeEnv,
   isProduction,
   port: Number(optional('PORT', '4000')),

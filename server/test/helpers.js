@@ -6,9 +6,10 @@ import { mailer } from '../src/email.js';
 
 export const app = createApp();
 
+// Categories are seeded reference data (db/schema.sql), so they are not cleared between tests.
 const TABLES = [
   'notifications', 'admin_actions', 'complaints', 'reports', 'bids', 'auctions', 'reviews',
-  'messages', 'listing_images', 'listings', 'categories', 'email_verifications', 'user_roles', 'users',
+  'messages', 'listing_images', 'listings', 'email_verifications', 'user_roles', 'users',
 ];
 
 export async function resetDatabase() {
@@ -44,6 +45,16 @@ export async function createUser({ email, name = 'Test Student', password = 'cor
     .expect(201);
   vi.restoreAllMocks();
   return { agent, user: res.body.user, password };
+}
+
+/** Inserts a listing directly (faster than the multipart API) and returns its id. */
+export async function insertListing(sellerId, { title = 'Study lamp', status = 'active', price = 500, categoryId = 3 } = {}) {
+  const [result] = await pool.execute(
+    `INSERT INTO listings (seller_id, title, description, category_id, item_condition, price, status)
+     VALUES (?, ?, 'A useful item for students.', ?, 'good', ?, ?)`,
+    [sellerId, title, categoryId, price, status],
+  );
+  return result.insertId;
 }
 
 export async function makeAdmin(userId) {

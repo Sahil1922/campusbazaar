@@ -137,7 +137,7 @@ export default function AdminUsers() {
                         ) : u.accountStatus === 'active' ? (
                           <button
                             type="button"
-                            className="button button-small button-danger"
+                            className="button button-small button-outline-danger"
                             disabled={busyId === u.id}
                             onClick={() => changeStatus(u, 'suspended')}
                           >

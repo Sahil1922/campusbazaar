@@ -45,7 +45,11 @@ export async function loadUser(userId) {
 }
 
 function readSessionUserId(req) {
-  const token = req.cookies?.[SESSION_COOKIE];
+  return userIdFromToken(req.cookies?.[SESSION_COOKIE]);
+}
+
+/** Returns the user id in a valid session token, or null. Also used to authenticate Socket.IO connections. */
+export function userIdFromToken(token) {
   if (!token) return null;
   try {
     const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });

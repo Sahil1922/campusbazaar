@@ -33,7 +33,7 @@ describe('UC-01 View Profile', () => {
   it('calculates activity from stored listings and reviews', async () => {
     const { agent, user } = await createUser({ email: 'seller@uni.test' });
     const { user: other } = await createUser({ email: 'buyer@uni.test' });
-    const [cat] = await pool.query("INSERT INTO categories (name) VALUES ('Books')");
+    const cat = { insertId: 1 }; // Seeded "Books" category.
     await pool.query(
       `INSERT INTO listings (seller_id, title, description, category_id, item_condition, price, status) VALUES
         (?, 'A', 'd', ?, 'good', 100, 'active'),

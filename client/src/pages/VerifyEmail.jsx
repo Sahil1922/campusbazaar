@@ -86,7 +86,7 @@ export default function VerifyEmail() {
             {formError.accountExists && <Link to="/sign-in">Sign in</Link>}
           </p>
         )}
-        <button type="submit" className="button full" disabled={submitting}>
+        <button type="submit" className="button button-orange full" disabled={submitting}>
           {submitting ? 'Creating account…' : 'Create account'}
         </button>
       </form>

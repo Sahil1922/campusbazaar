@@ -45,5 +45,6 @@ CampusBazaar is a university-focused student marketplace built with React, CSS, 
 - Read the SRS and use-case specifications when implementing or changing product behaviour.
 - Read the DFD when changing data flows or process boundaries.
 - Read the feasibility report when evaluating technology or deployment choices.
+- Follow [docs/business-rules.md](docs/business-rules.md) for team-approved rules the SRS leaves open (bids, durations, categories, reviews, moderation).
 - Keep detailed schemas, setup steps, test procedures and feature-specific rules in focused documentation near the relevant code; link that documentation here only when it exists and is needed regularly.
 - Update this file only when a durable, project-wide fact or recurring pitfall is discovered. Remove obsolete guidance instead of continually appending rules.

@@ -59,7 +59,7 @@ export default function Register() {
             {error.message}
           </p>
         )}
-        <button type="submit" className="button full" disabled={status === 'sending'}>
+        <button type="submit" className="button button-orange full" disabled={status === 'sending'}>
           {status === 'sending' ? 'Sending…' : 'Send verification link'}
         </button>
       </form>

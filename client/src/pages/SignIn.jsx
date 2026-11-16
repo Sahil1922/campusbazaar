@@ -51,7 +51,7 @@ export default function SignIn() {
             {error}
           </p>
         )}
-        <button type="submit" className="button full" disabled={submitting}>
+        <button type="submit" className="button button-orange full" disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>
       </form>

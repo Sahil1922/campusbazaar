@@ -49,6 +49,11 @@ CREATE TABLE IF NOT EXISTS categories (
   UNIQUE KEY uq_categories_name (name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
+-- Approved category list (docs/business-rules.md).
+INSERT IGNORE INTO categories (id, name) VALUES
+  (1, 'Books'), (2, 'Electronics'), (3, 'Furniture'), (4, 'Clothing'),
+  (5, 'Sports'), (6, 'Stationery'), (7, 'Other');
+
 CREATE TABLE IF NOT EXISTS listings (
   id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   seller_id      BIGINT UNSIGNED NOT NULL,
@@ -57,7 +62,10 @@ CREATE TABLE IF NOT EXISTS listings (
   category_id    INT UNSIGNED    NOT NULL,
   item_condition ENUM('new', 'like_new', 'good', 'fair', 'poor') NOT NULL,
   price          DECIMAL(10, 2)  NOT NULL,
-  status         ENUM('active', 'in_auction', 'sold', 'removed') NOT NULL DEFAULT 'active',
+  -- The seller is open to offers; the price above is still shown (docs/business-rules.md).
+  price_negotiable TINYINT(1)    NOT NULL DEFAULT 0,
+  -- removed = taken down by an administrator; deleted = deleted by its seller (kept for message/report history).
+  status         ENUM('active', 'in_auction', 'sold', 'removed', 'deleted') NOT NULL DEFAULT 'active',
   created_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -107,6 +115,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at  DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_reviews_reviewee (reviewee_id),
+  -- One review per reviewer per seller per listing (docs/business-rules.md).
+  UNIQUE KEY uq_reviews_once (reviewer_id, reviewee_id, listing_id),
   CONSTRAINT chk_reviews_rating CHECK (rating BETWEEN 1 AND 5),
   CONSTRAINT fk_reviews_reviewer FOREIGN KEY (reviewer_id) REFERENCES users (id),
   CONSTRAINT fk_reviews_reviewee FOREIGN KEY (reviewee_id) REFERENCES users (id),
