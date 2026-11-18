@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,9 +32,12 @@ if (allowedEmailDomains.length === 0) {
   throw new Error('ALLOWED_EMAIL_DOMAINS must list at least one domain');
 }
 
+// Verification emails go out through Brevo's HTTPS API (BREVO_API_KEY) or any SMTP server
+// (SMTP_HOST). Some hosts block SMTP — Railway does on its Free, Trial and Hobby plans.
 const smtpHost = optional('SMTP_HOST');
-if (isProduction && !smtpHost) {
-  throw new Error('SMTP_HOST is required in production so verification emails can be sent');
+const brevoApiKey = optional('BREVO_API_KEY');
+if (isProduction && !smtpHost && !brevoApiKey) {
+  throw new Error('BREVO_API_KEY or SMTP_HOST is required in production so verification emails can be sent');
 }
 
 // Listing photos are stored on the server's disk (approved for Sprint 2).
@@ -50,6 +54,23 @@ const trustProxy = Number(optional('TRUST_PROXY', '0'));
 if (!Number.isInteger(trustProxy) || trustProxy < 0) {
   throw new Error('TRUST_PROXY must be a whole number (0 when the app is not behind a proxy)');
 }
+
+// Encrypted database connections. Managed MySQL services (e.g. Azure Database for MySQL) require
+// TLS. The server's certificate is always verified — signed by a trusted authority (Node's built-in
+// list, or DB_SSL_CA, a PEM file, when the provider uses its own) and issued for DB_HOST.
+const dbSslSetting = optional('DB_SSL', 'false').toLowerCase();
+if (!['true', 'false'].includes(dbSslSetting)) {
+  throw new Error('DB_SSL must be true or false');
+}
+const dbSslCaPath = optional('DB_SSL_CA');
+if (dbSslCaPath && dbSslSetting !== 'true') {
+  throw new Error('DB_SSL_CA is set but DB_SSL is not true');
+}
+// Not frozen: mysql2 writes to the ssl object while connecting.
+const dbSsl =
+  dbSslSetting === 'true'
+    ? { rejectUnauthorized: true, verifyIdentity: true, ...(dbSslCaPath && { ca: readFileSync(path.resolve(dbSslCaPath), 'utf8') }) }
+    : undefined;
 
 const clientOrigin = optional('CLIENT_ORIGIN', 'http://localhost:5173');
 if (isProduction && !clientOrigin.startsWith('https://')) {
@@ -78,7 +99,9 @@ export const config = Object.freeze({
     user: required('DB_USER'),
     password: optional('DB_PASSWORD'),
     database: optional('DB_NAME', 'campusbazaar'),
+    ...(dbSsl && { ssl: dbSsl }),
   }),
+  brevoApiKey,
   smtp: Object.freeze({
     host: smtpHost,
     port: Number(optional('SMTP_PORT', '587')),

@@ -1,0 +1,13 @@
+{
+  "name": "campusbazaar",
+  "private": true,
+  "description": "CampusBazaar: build and start commands for hosts that deploy from the repository root (e.g. Railway). See docs/railway-deployment.md.",
+  "scripts": {
+    "build": "npm ci --prefix server --omit=dev && npm ci --prefix client --include=dev && npm run build --prefix client",
+    "start": "npm start --prefix server",
+    "db:setup": "npm run db:setup --prefix server"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

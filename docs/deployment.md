@@ -4,6 +4,10 @@ CampusBazaar runs as **one Node.js process** that serves the API, the built Reac
 live updates on a single address, plus a **MySQL 8** database. This guide is host-independent; the
 feasibility report plans cloud hosting on student credits or a free tier with a third-party email service.
 
+**Chosen host:** Railway (app service + Railway MySQL + a volume for photos) with Brevo's email API.
+Step-by-step instructions: [railway-deployment.md](railway-deployment.md). An alternative self-managed
+setup on Azure for Students is in [azure-deployment.md](azure-deployment.md).
+
 ## What the host must provide
 
 | Need | Why |
@@ -13,7 +17,7 @@ feasibility report plans cloud hosting on student credits or a free tier with a 
 | HTTPS on your domain | Session cookies are `Secure` in production and only travel over HTTPS. Most hosts terminate HTTPS in a proxy for you. |
 | WebSocket support | Live auction updates use Socket.IO (it falls back to long-polling if WebSockets are blocked). |
 | A **persistent disk** (or folder) for photos | Listing photos are saved to `UPLOAD_DIR`. Many free tiers wipe the disk on every restart or deploy — photos would disappear. |
-| An SMTP email account | Verification links are emailed; the server refuses to start in production without `SMTP_HOST`. |
+| An email provider (Brevo API key or SMTP account) | Verification links are emailed; the server refuses to start in production without `BREVO_API_KEY` or `SMTP_HOST`. Some hosts block SMTP (Railway does below its Pro plan). |
 | A single always-on instance | The auction-ending timer and Socket.IO rooms assume one process. Running several needs a shared Socket.IO adapter (e.g. Redis) — not set up. Servers that "sleep" when idle delay auction endings until they wake (endings are also settled whenever an auction is viewed). |
 
 ## Build and start commands
@@ -48,9 +52,13 @@ Set these in the host's settings — never commit them. `server/.env.example` li
 | `PORT` | Whatever the host gives you (often provided automatically) |
 | `CLIENT_ORIGIN` | Your site's address, e.g. `https://campusbazaar.example.org` (used in verification links) |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | From your MySQL provider; use a user limited to the CampusBazaar database |
+| `DB_SSL` | `true` for managed MySQL that requires encryption (Azure does). The certificate is verified against Node's trusted authorities and must match `DB_HOST`, so use the host name, not an IP address |
+| `DB_SSL_CA` | Optional path to the provider's CA certificate (`.pem`) if the default check fails |
 | `JWT_SECRET` | New random value, at least 32 characters — **not** the one from your laptop: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `ALLOWED_EMAIL_DOMAINS` | `uohyd.ac.in` (plus any student sub-domains, comma-separated) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | From your email provider; port 465 uses TLS directly, 587 uses STARTTLS |
+| `BREVO_API_KEY` | Brevo API key: emails are sent over HTTPS. Use this on hosts that block SMTP (Railway Free/Trial/Hobby). When set, the SMTP settings are ignored |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Or any SMTP provider; port 465 uses TLS directly, 587 uses STARTTLS. Production needs `BREVO_API_KEY` or `SMTP_HOST` |
+| `EMAIL_FROM` | Sender, e.g. `CampusBazaar <verified-sender@example.com>`; must be a sender your provider has verified |
 | `UPLOAD_DIR` | A folder on the persistent disk, e.g. `/data/uploads` |
 | `TRUST_PROXY` | `1` when the host puts an HTTPS proxy in front of the app (almost always); `0` otherwise |
 | `SERVE_CLIENT` | Leave empty (defaults to `true` in production) |
@@ -63,7 +71,7 @@ Set these in the host's settings — never commit them. `server/.env.example` li
    host's shell, or from your computer if the database accepts outside connections).
 3. **Deploy** with the build and start commands above, then open `https://your-domain/api/health`.
 4. **Email check:** register with a real `@uohyd.ac.in` address and confirm the verification email arrives
-   (check spam). Fix the SMTP settings if the server log shows a sending error.
+   (check spam). Fix the email settings if the server log shows a sending error.
 5. **Administrator:** from the host's shell, run
    `npm run make-admin --prefix server -- you@uohyd.ac.in`.
 6. **Smoke test:** sell an item with a photo, restart the app, and check the photo still loads (proves the
@@ -87,7 +95,7 @@ columns and indexes and upgrades older databases) and restart the app.
 
 ## Choosing a host — what to check
 
-The team still needs to pick a host and an email provider. For each candidate, check:
+The team chose Railway (above). If you ever move to another host, check:
 
 - Node.js LTS support and a start command you control.
 - Managed MySQL 8 (or the ability to run it), and whether the free tier expires or limits size.
@@ -103,7 +111,7 @@ The team still needs to pick a host and an email provider. For each candidate, c
 - [ ] `NODE_ENV=production`, new `JWT_SECRET`, `CLIENT_ORIGIN` is `https://…`
 - [ ] `TRUST_PROXY` set to match the host (usually `1`)
 - [ ] `UPLOAD_DIR` on a persistent disk; photo survives a restart
-- [ ] Verification email arrives from the real SMTP provider
+- [ ] Verification email arrives from the real email provider
 - [ ] `/api/health` returns `{"status":"ok"}`
 - [ ] Administrator account created with `make-admin`
 - [ ] Live bid update seen between two accounts
