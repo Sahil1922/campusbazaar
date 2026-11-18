@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 import { ApiError } from '../api.js';
+import CameraDialog from '../components/CameraDialog.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import { ErrorState, Loading, SelectField, TextAreaField } from '../components/ui.jsx';
 import { CONDITIONS } from '../lib/format.js';
 import { useCategories } from '../lib/categories.js';
+import { shrinkPhoto } from '../lib/photos.js';
 import { createListing, getListing, updateListing } from '../services/listings.js';
 
 // Same limits as the server, checked here only to give quicker feedback.
@@ -25,6 +27,7 @@ export default function ListingForm() {
   const categories = useCategories(user);
   const navigate = useNavigate();
   const fileInput = useRef(null);
+  const cameraInput = useRef(null);
   const [form, setForm] = useState(EMPTY);
   // Photos: saved ones are { key, id, url }; newly chosen ones are { key, file, url } with a local preview URL.
   const [images, setImages] = useState([]);
@@ -33,6 +36,9 @@ export default function ListingForm() {
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [preparingPhotos, setPreparingPhotos] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const closeCamera = useCallback(() => setCameraOpen(false), []);
 
   // Release local preview URLs when they are no longer shown.
   const imagesRef = useRef(images);
@@ -63,20 +69,49 @@ export default function ListingForm() {
 
   const update = (field) => (event) => setForm((f) => ({ ...f, [field]: event.target.value }));
 
-  const addImages = (event) => {
-    const files = [...event.target.files];
-    event.target.value = '';
+  // Photos from the file picker or the camera. Big photos are shrunk first (see lib/photos.js),
+  // so the 5 MB limit applies to the photo that is actually uploaded.
+  const addFiles = async (files) => {
     const problems = [];
-    const room = MAX_IMAGES - images.length;
+    const room = MAX_IMAGES - imagesRef.current.length;
     const accepted = [];
-    for (const file of files) {
-      if (!IMAGE_TYPES.includes(file.type)) problems.push(`${file.name}: use JPG, PNG or WebP.`);
-      else if (file.size > MAX_IMAGE_BYTES) problems.push(`${file.name}: must be 5 MB or smaller.`);
-      else if (accepted.length >= room) problems.push(`You can add at most ${MAX_IMAGES} photos.`);
-      else accepted.push({ key: `new-${(previewKey += 1)}`, file, url: URL.createObjectURL(file) });
+    setPreparingPhotos(true);
+    try {
+      for (const original of files) {
+        if (!IMAGE_TYPES.includes(original.type)) {
+          problems.push(`${original.name}: use JPG, PNG or WebP.`);
+          continue;
+        }
+        if (accepted.length >= room) {
+          problems.push(`You can add at most ${MAX_IMAGES} photos.`);
+          continue;
+        }
+        const file = await shrinkPhoto(original);
+        if (file.size > MAX_IMAGE_BYTES) problems.push(`${original.name}: must be 5 MB or smaller.`);
+        else accepted.push({ key: `new-${(previewKey += 1)}`, file, url: URL.createObjectURL(file) });
+      }
+    } finally {
+      setPreparingPhotos(false);
     }
     setImages((list) => [...list, ...accepted]);
     setErrors((e) => ({ ...e, images: [...new Set(problems)].join(' ') || undefined }));
+  };
+
+  const addImages = (event) => {
+    const files = [...event.target.files];
+    event.target.value = '';
+    return addFiles(files);
+  };
+
+  // Phones open their own camera app (better focus and quality); laptops get a webcam preview.
+  const takePhoto = () => {
+    if (window.matchMedia?.('(pointer: coarse)').matches) cameraInput.current?.click();
+    else setCameraOpen(true);
+  };
+
+  const addCameraPhoto = (file) => {
+    setCameraOpen(false);
+    addFiles([file]);
   };
 
   const removeImage = (key) =>
@@ -183,14 +218,27 @@ export default function ListingForm() {
                 </div>
               ))}
               {images.length < MAX_IMAGES && (
-                <button type="button" className="upload-add" onClick={() => fileInput.current?.click()}>
-                  <Icon name="image" size={24} />
-                  Add photo
-                </button>
+                <>
+                  <button type="button" className="upload-add" onClick={() => fileInput.current?.click()} disabled={preparingPhotos}>
+                    <Icon name="image" size={24} />
+                    Add photo
+                  </button>
+                  <button type="button" className="upload-add" onClick={takePhoto} disabled={preparingPhotos}>
+                    <Icon name="camera" size={24} />
+                    Take photo
+                  </button>
+                </>
               )}
             </div>
             <input ref={fileInput} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onChange={addImages} />
-            <p className="hint">JPG, PNG or WebP, 5 MB each at most. The first photo is the cover.</p>
+            <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={addImages} aria-label="Take photo with camera" />
+            {preparingPhotos ? (
+              <p className="hint" role="status">
+                Preparing photos…
+              </p>
+            ) : (
+              <p className="hint">JPG, PNG or WebP. Large photos are made smaller automatically. The first photo is the cover.</p>
+            )}
             {errors.images && (
               <p className="field-error" role="alert">
                 {errors.images}
@@ -213,6 +261,7 @@ export default function ListingForm() {
           </div>
         </form>
       </section>
+      {cameraOpen && <CameraDialog onCapture={addCameraPhoto} onClose={closeCamera} />}
     </div>
   );
 }

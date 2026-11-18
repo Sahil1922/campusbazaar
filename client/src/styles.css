@@ -1572,6 +1572,37 @@ th {
   color: var(--blue);
 }
 
+.upload-add:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.camera-view {
+  position: relative;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 1rem;
+}
+
+.camera-view video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.camera-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: #fff;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

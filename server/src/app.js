@@ -57,7 +57,9 @@ export function createApp() {
   app.use(cookieParser());
 
   // Listing photos. File names are random; content type was verified from the file bytes on upload.
-  app.use('/uploads', express.static(config.uploadDir, { index: false, dotfiles: 'ignore', fallthrough: true, maxAge: '7d' }));
+  // A saved photo is never changed (edits upload a new file under a new name), so browsers may keep
+  // it for a year without asking the server again.
+  app.use('/uploads', express.static(config.uploadDir, { index: false, dotfiles: 'ignore', fallthrough: true, maxAge: '365d', immutable: true }));
   app.use('/uploads', (req, res) => res.status(404).end());
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));

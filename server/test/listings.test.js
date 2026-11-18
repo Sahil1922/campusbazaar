@@ -126,6 +126,8 @@ describe('UC-02 Create Listing', () => {
     const served = await agent.get(images[0].url).expect(200);
     expect(served.headers['content-type']).toBe('image/png');
     expect(served.headers['x-content-type-options']).toBe('nosniff');
+    // Photos never change once saved, so browsers can cache them for a long time.
+    expect(served.headers['cache-control']).toBe('public, max-age=31536000, immutable');
   });
 
   it('rejects a file that only pretends to be an image, and saves nothing', async () => {

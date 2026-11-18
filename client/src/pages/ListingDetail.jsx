@@ -57,7 +57,7 @@ export default function ListingDetail() {
             <div className="gallery-thumbs">
               {l.images.map((img, i) => (
                 <button key={img.id ?? i} type="button" aria-pressed={i === imageIndex} aria-label={`Photo ${i + 1}`} onClick={() => setImageIndex(i)}>
-                  <img className="photo" src={img.url} alt="" />
+                  <img className="photo" src={img.url} alt="" loading="lazy" decoding="async" />
                 </button>
               ))}
             </div>
