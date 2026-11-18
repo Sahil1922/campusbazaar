@@ -84,3 +84,29 @@ describe('live messages (UC-05)', () => {
     expect(messages.listConversations).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('when sending is blocked (UC-05 A-1)', () => {
+  beforeEach(() => {
+    listeners.clear();
+    messages.listConversations.mockReset().mockResolvedValue(conversation(first));
+    messages.getConversation.mockReset();
+  });
+
+  it('says the student cannot be contacted when the listing is still available', async () => {
+    messages.getConversation.mockResolvedValue({ ...thread([first]), canSend: false });
+    renderPage();
+    expect(await screen.findByText('This student cannot be contacted right now.')).toBeInTheDocument();
+    expect(screen.queryByText(/listing is no longer available/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Message' })).not.toBeInTheDocument();
+  });
+
+  it('says the listing is no longer available when it was sold, deleted or removed', async () => {
+    const t = thread([first]);
+    messages.getConversation.mockResolvedValue({ ...t, listing: { ...t.listing, status: 'sold' }, canSend: false });
+    renderPage();
+    expect(await screen.findByText('Messaging is unavailable because this listing is no longer available.')).toBeInTheDocument();
+    expect(screen.queryByText('This student cannot be contacted right now.')).not.toBeInTheDocument();
+    // The conversation history is still shown.
+    expect(screen.getByText('Is it still available?', { selector: '.bubble' })).toBeInTheDocument();
+  });
+});

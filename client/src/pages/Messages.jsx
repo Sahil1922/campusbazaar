@@ -41,6 +41,8 @@ function Thread({ listingId, buyerId, onSent }) {
   }
 
   const t = thread.data;
+  // Sending is blocked either because the listing is gone or because the other student's account is not active.
+  const listingAvailable = ['active', 'in_auction'].includes(t.listing.status);
   const send = async (event) => {
     event.preventDefault();
     setError(null);
@@ -67,7 +69,7 @@ function Thread({ listingId, buyerId, onSent }) {
           <div>
             <strong>{t.otherName}</strong>
           </div>
-          {['active', 'in_auction'].includes(t.listing.status) ? (
+          {listingAvailable ? (
             <Link to={`/listings/${t.listing.id}`} className="small">
               {t.listing.title} · {formatPrice(t.listing.price)}
             </Link>
@@ -115,7 +117,9 @@ function Thread({ listingId, buyerId, onSent }) {
         </form>
       ) : (
         <p className="form-info" style={{ margin: '0.75rem 1rem' }}>
-          Messaging is unavailable because this listing was removed.
+          {listingAvailable
+            ? 'This student cannot be contacted right now.'
+            : 'Messaging is unavailable because this listing is no longer available.'}
         </p>
       )}
       {error && (
