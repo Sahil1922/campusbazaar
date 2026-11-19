@@ -119,6 +119,29 @@ describe('UC-09 Place Bid', () => {
     expect(res.body.details[0].field).toBe('amount');
   });
 
+  it('refuses a bid more than 10 times the minimum bid, at every stage', async () => {
+    const { alice, bob, auction } = await setup(); // starting price ₹1000, increment ₹100
+    expect(auction.maximumBid).toBe(10000);
+    const tooHigh = await bid(alice.agent, auction.id, '10000.01').expect(409);
+    expect(tooHigh.body.details[0]).toEqual({ field: 'amount', message: 'Your bid can be at most ₹10,000 (10 times the minimum bid).' });
+    const [none] = await pool.query('SELECT id FROM bids');
+    expect(none).toHaveLength(0);
+
+    const first = await bid(alice.agent, auction.id, '10000').expect(201);
+    expect(first.body.auction).toMatchObject({ currentBid: 10000, minimumBid: 10100, maximumBid: 101000 });
+    await bid(bob.agent, auction.id, '101000.01').expect(409);
+    await bid(bob.agent, auction.id, '101000').expect(201);
+  });
+
+  it('never allows more than ₹10,00,000, even when 10 times the minimum would be higher', async () => {
+    const seller = await createUser({ email: 'seller@uni.test' });
+    const alice = await createUser({ email: 'alice@uni.test' });
+    const listingId = await insertListing(seller.user.id, { title: 'Road bike', price: 200000 });
+    const res = await start(seller.agent, { listingId, startingPrice: '200000', bidIncrement: '1000', durationHours: 24 }).expect(201);
+    expect(res.body.auction.maximumBid).toBe(1000000);
+    await bid(alice.agent, res.body.auction.id, '1000000').expect(201);
+  });
+
   it('does not let the seller bid', async () => {
     const { seller, auction } = await setup();
     await bid(seller.agent, auction.id, '5000').expect(403);

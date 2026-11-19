@@ -14,6 +14,8 @@ If any rule changes, update this file, the server and the matching client servic
 | Increment suggestion | The form suggests about 5% of the starting price, rounded to a tidy amount (whole ₹ under ₹10, multiples of ₹5 under ₹100, otherwise multiples of ₹10); the seller can change it (approved 16 November 2026). |
 | First bid | Must be at least the starting price. |
 | Later bids | Must be at least the current bid **plus** the bid increment. |
+| Maximum bid | A bid may be **at most 10 times the minimum bid** (and never more than ₹10,00,000), so nobody can leap to an absurd amount in one go and disturb the auction (approved 19 November 2026). |
+| Big-bid confirmation | The auction page asks the bidder to confirm before placing a bid of 3 times the minimum bid or more: "Bids are binding. Continue?" (approved 19 November 2026; the 3× threshold was an implementation choice). |
 | Timing | A bid is accepted only before the server-side end time. |
 | Seller | A seller cannot bid on their own auction. |
 | Sold | When an auction ends with a winner, its listing is marked sold (approved 15 November 2026). |

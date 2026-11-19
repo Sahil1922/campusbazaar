@@ -4,10 +4,15 @@ import { useAuth } from '../auth.jsx';
 import { ApiError } from '../api.js';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
-import { Countdown, ErrorState, ListingImage, Loading } from '../components/ui.jsx';
+import { Countdown, Dialog, ErrorState, ListingImage, Loading } from '../components/ui.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { conditionLabel, formatDateTime, formatPrice, timeAgo } from '../lib/format.js';
 import { getAuction, placeBid, subscribe } from '../services/auctions.js';
+
+// Bids this many times the minimum bid or more are confirmed first, so a playful or mistyped
+// amount is not placed by accident. The server separately refuses bids over 10 times the minimum.
+const CONFIRM_MULTIPLE = 3;
+const timesText = (ratio) => Number(ratio.toFixed(1)).toLocaleString('en-IN');
 
 /**
  * UC-09 Place Bid / Participate in Auction, View Bids (seller) and the winner result.
@@ -21,6 +26,8 @@ export default function AuctionDetail() {
   const [bidError, setBidError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bidding, setBidding] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const closeConfirm = useCallback(() => setConfirming(false), []);
   const { reload } = auction;
 
   // Live updates: refetch whenever a new bid is stored (Socket.IO in Sprint 4).
@@ -34,8 +41,12 @@ export default function AuctionDetail() {
   const live = a.status === 'active';
   const l = a.listing;
 
-  const submitBid = async (event) => {
-    event.preventDefault();
+  const value = Number(amount);
+  const needsConfirmation =
+    live && value >= a.minimumBid * CONFIRM_MULTIPLE && (a.maximumBid === undefined || value <= a.maximumBid);
+
+  const sendBid = async () => {
+    setConfirming(false);
     setBidError(null);
     setNotice(null);
     setBidding(true);
@@ -51,6 +62,12 @@ export default function AuctionDetail() {
     } finally {
       setBidding(false);
     }
+  };
+
+  const submitBid = (event) => {
+    event.preventDefault();
+    if (needsConfirmation) setConfirming(true);
+    else sendBid();
   };
 
   return (
@@ -141,17 +158,38 @@ export default function AuctionDetail() {
                     type="number"
                     inputMode="decimal"
                     min={a.minimumBid}
+                    max={a.maximumBid}
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder={String(a.minimumBid)}
-                    hint={`Enter ${formatPrice(a.minimumBid)} or more.`}
+                    hint={
+                      a.maximumBid === undefined
+                        ? `Enter ${formatPrice(a.minimumBid)} or more.`
+                        : `Enter ${formatPrice(a.minimumBid)} to ${formatPrice(a.maximumBid)}.`
+                    }
                     error={bidError}
                   />
                   <button type="submit" className="button button-red button-large" style={{ marginTop: '1.55rem' }} disabled={bidding}>
                     <Icon name="gavel" size={18} /> {bidding ? 'Placing…' : 'Place bid'}
                   </button>
                 </form>
+                {confirming && (
+                  <Dialog title="Confirm your bid" onClose={closeConfirm}>
+                    <p>
+                      You&apos;re bidding <strong>{formatPrice(value)}</strong>, which is {timesText(value / a.minimumBid)} times the
+                      minimum bid of {formatPrice(a.minimumBid)}. Bids are binding. Continue?
+                    </p>
+                    <div className="button-row">
+                      <button type="button" className="button button-red" onClick={sendBid}>
+                        Yes, place bid
+                      </button>
+                      <button type="button" className="button button-secondary" onClick={closeConfirm}>
+                        Cancel
+                      </button>
+                    </div>
+                  </Dialog>
+                )}
               </>
             )}
           </section>

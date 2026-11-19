@@ -18,6 +18,9 @@ export const DURATION_HOURS = [1, 6, 12, 24, 72, 168];
 // Approved rule: every amount is ₹1 to ₹10,00,000 (docs/business-rules.md).
 const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 1000000;
+// Approved rule (19 Nov 2026): a bid may be at most this many times the minimum bid, so nobody can
+// leap to an absurd amount in one go (e.g. ₹10,00,000 on a ₹500 item) and disturb the auction.
+export const MAX_BID_MULTIPLE = 10;
 
 const money = (message) =>
   z.preprocess(
@@ -56,6 +59,10 @@ function minimumBidPaise(auction) {
   return auction.current_bid === null ? paise(auction.starting_price) : paise(auction.current_bid) + paise(auction.bid_increment);
 }
 
+function maximumBidPaise(auction) {
+  return Math.min(minimumBidPaise(auction) * MAX_BID_MULTIPLE, MAX_AMOUNT * 100);
+}
+
 /** Full auction view for one viewer. Bidder names are shown to the seller (View Bids) and to the bidder themselves. */
 async function loadAuction(auctionId, me) {
   const [[a]] = await pool.execute(
@@ -88,6 +95,7 @@ async function loadAuction(auctionId, me) {
     winnerId: toNumber(a.winner_id),
     winnerName: winner ? showName(winner.bidder_id, winner.name) : null,
     minimumBid: fromPaise(minimumBidPaise(a)),
+    maximumBid: fromPaise(maximumBidPaise(a)),
     bidCount: Number(bidCount),
     isSeller,
     isWinner: a.winner_id !== null && Number(a.winner_id) === me,
@@ -220,6 +228,11 @@ auctionsRouter.post(
       const min = minimumBidPaise(a);
       if (paise(amount) < min) {
         const text = `Your bid must be at least ₹${fromPaise(min).toLocaleString('en-IN')}.`;
+        throw new HttpError(409, text, [{ field: 'amount', message: text }]);
+      }
+      const max = maximumBidPaise(a);
+      if (paise(amount) > max) {
+        const text = `Your bid can be at most ₹${fromPaise(max).toLocaleString('en-IN')} (${MAX_BID_MULTIPLE} times the minimum bid).`;
         throw new HttpError(409, text, [{ field: 'amount', message: text }]);
       }
       await conn.execute('INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)', [id, me, amount]);

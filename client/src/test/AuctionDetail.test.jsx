@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,6 +25,7 @@ const auction = (overrides = {}) => ({
   bidIncrement: 100,
   currentBid: 1000,
   minimumBid: 1100,
+  maximumBid: 11000,
   bidCount: 1,
   endTime: inOneHour(),
   isSeller: false,
@@ -65,7 +66,7 @@ describe('auction page (UC-09)', () => {
   it('shows the minimum bid from the server and subscribes to live updates', async () => {
     auctions.getAuction.mockResolvedValue(auction());
     renderPage();
-    expect(await screen.findByText('Enter ₹1,100 or more.')).toBeInTheDocument();
+    expect(await screen.findByText('Enter ₹1,100 to ₹11,000.')).toBeInTheDocument();
     expect(auctions.subscribe).toHaveBeenCalledWith('9', expect.any(Function));
   });
 
@@ -91,6 +92,45 @@ describe('auction page (UC-09)', () => {
     await user.click(screen.getByRole('button', { name: /place bid/i }));
     expect(await screen.findByText('Your bid must be at least ₹1,200.')).toBeInTheDocument();
     expect(auctions.getAuction).toHaveBeenCalledTimes(2);
+  });
+
+  it('asks for confirmation before a bid of 3 times the minimum or more, and sends nothing on Cancel', async () => {
+    const user = userEvent.setup();
+    auctions.getAuction.mockResolvedValue(auction());
+    renderPage();
+    await user.type(await screen.findByLabelText('Your bid (₹)'), '5500');
+    await user.click(screen.getByRole('button', { name: /place bid/i }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Confirm your bid' });
+    expect(dialog).toHaveTextContent("You're bidding ₹5,500, which is 5 times the minimum bid of ₹1,100. Bids are binding. Continue?");
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(auctions.placeBid).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Your bid (₹)')).toHaveValue(5500);
+  });
+
+  it('places a big bid once it is confirmed', async () => {
+    const user = userEvent.setup();
+    auctions.getAuction.mockResolvedValue(auction());
+    auctions.placeBid.mockResolvedValue(auction({ currentBid: 3300, minimumBid: 3400, maximumBid: 34000, iAmHighest: true }));
+    renderPage();
+    await user.type(await screen.findByLabelText('Your bid (₹)'), '3300');
+    await user.click(screen.getByRole('button', { name: /place bid/i }));
+    await user.click(screen.getByRole('button', { name: 'Yes, place bid' }));
+    expect(await screen.findByText('Your bid of ₹3,300 is the highest bid.')).toBeInTheDocument();
+    expect(auctions.placeBid).toHaveBeenCalledWith(student, 9, '3300');
+  });
+
+  it("does not confirm a bid over the maximum; the server's reason is shown instead", async () => {
+    const user = userEvent.setup();
+    auctions.getAuction.mockResolvedValue(auction());
+    const text = 'Your bid can be at most ₹11,000 (10 times the minimum bid).';
+    auctions.placeBid.mockRejectedValue(new ApiError(409, text, [{ field: 'amount', message: text }]));
+    renderPage();
+    await user.type(await screen.findByLabelText('Your bid (₹)'), '50000');
+    await user.click(screen.getByRole('button', { name: /place bid/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByText(text)).toBeInTheDocument();
   });
 
   it('does not offer bidding to the seller', async () => {

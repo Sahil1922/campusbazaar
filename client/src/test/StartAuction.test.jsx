@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +35,14 @@ function renderPage() {
   );
 }
 
+// The form appears as soon as the listing loads and is pre-filled right after. Waiting for the
+// pre-filled value keeps the pre-fill from landing on top of what a test types.
+async function prefilledStartingPrice() {
+  const field = await screen.findByLabelText('Starting price (₹)');
+  await waitFor(() => expect(field).toHaveValue(120));
+  return field;
+}
+
 describe('suggested bid increment', () => {
   it('is about 5% of the starting price, rounded to a tidy amount', () => {
     expect(auctions.suggestIncrement(120)).toBe('6');
@@ -54,7 +62,7 @@ describe('Start auction form (UC-07/UC-08)', () => {
 
   it('pre-fills the listed price and a suggested increment, and explains how the prices relate', async () => {
     renderPage();
-    expect(await screen.findByLabelText('Starting price (₹)')).toHaveValue(120);
+    await prefilledStartingPrice();
     expect(screen.getByLabelText('Bid increment (₹)')).toHaveValue(6);
     expect(screen.getByText(/If nobody bids, the item goes back on sale at ₹120/)).toBeInTheDocument();
   });
@@ -62,7 +70,7 @@ describe('Start auction form (UC-07/UC-08)', () => {
   it('updates the suggested increment until the seller types their own', async () => {
     const user = userEvent.setup();
     renderPage();
-    const starting = await screen.findByLabelText('Starting price (₹)');
+    const starting = await prefilledStartingPrice();
     const increment = screen.getByLabelText('Bid increment (₹)');
     await user.clear(starting);
     await user.type(starting, '80');
@@ -77,7 +85,7 @@ describe('Start auction form (UC-07/UC-08)', () => {
   it('refuses a starting price above the listed price without contacting the server', async () => {
     const user = userEvent.setup();
     renderPage();
-    const starting = await screen.findByLabelText('Starting price (₹)');
+    const starting = await prefilledStartingPrice();
     await user.clear(starting);
     await user.type(starting, '150');
     expect(screen.getByText(/can't be more than your listed price \(₹120\)/)).toBeInTheDocument();
@@ -91,7 +99,7 @@ describe('Start auction form (UC-07/UC-08)', () => {
     const user = userEvent.setup();
     auctions.startAuction.mockResolvedValue({ id: 31 });
     renderPage();
-    const starting = await screen.findByLabelText('Starting price (₹)');
+    const starting = await prefilledStartingPrice();
     await user.clear(starting);
     await user.type(starting, '80');
     await user.selectOptions(screen.getByLabelText('Auction duration'), '24');
