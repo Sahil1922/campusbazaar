@@ -39,11 +39,17 @@ export function EmptyState({ icon = 'search', title, children }) {
   );
 }
 
-/** First listing image, or a coloured placeholder with the category icon. */
+/**
+ * First listing image, or a coloured placeholder with the category icon — also used when the
+ * photo file cannot be loaded, so a missing file never shows as a broken image.
+ */
 export function ListingImage({ listing, index = 0 }) {
   const image = listing.images?.[index];
   const src = typeof image === 'string' ? image : image?.url;
-  if (src) return <img className="photo" src={src} alt={listing.title} loading="lazy" />;
+  const [failedSrc, setFailedSrc] = useState(null);
+  if (src && src !== failedSrc) {
+    return <img className="photo" src={src} alt={listing.title} loading="lazy" onError={() => setFailedSrc(src)} />;
+  }
   const name = listing.category?.name;
   const style = categoryStyle(name);
   return (
