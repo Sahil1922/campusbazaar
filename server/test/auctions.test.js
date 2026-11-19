@@ -107,10 +107,10 @@ describe('UC-09 Place Bid', () => {
   });
 
   it('accepts amounts with paise exactly at the minimum', async () => {
-    const { alice, auction } = await setup({ startingPrice: '10.10', bidIncrement: '0.20' });
+    const { alice, auction } = await setup({ startingPrice: '10.10', bidIncrement: '1.20' });
     await bid(alice.agent, auction.id, '10.10').expect(201);
-    await bid(alice.agent, auction.id, '10.29').expect(409);
-    await bid(alice.agent, auction.id, '10.30').expect(201);
+    await bid(alice.agent, auction.id, '11.29').expect(409);
+    await bid(alice.agent, auction.id, '11.30').expect(201);
   });
 
   it.each(['0', '-5', '12.345', 'abc', '', '10000001'])('rejects the amount %s', async (amount) => {

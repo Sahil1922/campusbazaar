@@ -9,6 +9,8 @@ import { MAX_IMAGES, checkImages, deleteImages, imageUrl, parseListingForm, save
 
 export const CONDITIONS = ['new', 'like_new', 'good', 'fair', 'poor'];
 const PAGE_SIZE = 24;
+// Approved rule: prices are ₹1 to ₹10,00,000 (docs/business-rules.md).
+const MIN_PRICE = 1;
 const MAX_PRICE = 1000000;
 
 const blankToUndefined = (schema) => z.preprocess((v) => (v === '' ? undefined : v), schema);
@@ -16,7 +18,7 @@ const money = (message) =>
   z
     .string({ error: message })
     .trim()
-    .refine((v) => /^\d{1,7}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= MAX_PRICE, message);
+    .refine((v) => /^\d{1,7}(\.\d{1,2})?$/.test(v) && Number(v) >= MIN_PRICE && Number(v) <= MAX_PRICE, message);
 
 const listingFields = z.object({
   title: z

@@ -15,6 +15,8 @@ import { settleDueAuctions } from './settle.js';
 // increment; bids only before the server-side end time; sellers cannot bid on their own auctions.
 
 export const DURATION_HOURS = [1, 6, 12, 24, 72, 168];
+// Approved rule: every amount is ₹1 to ₹10,00,000 (docs/business-rules.md).
+const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 1000000;
 
 const money = (message) =>
@@ -23,7 +25,7 @@ const money = (message) =>
     z
       .string({ error: message })
       .trim()
-      .refine((v) => /^\d{1,7}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= MAX_AMOUNT, message),
+      .refine((v) => /^\d{1,7}(\.\d{1,2})?$/.test(v) && Number(v) >= MIN_AMOUNT && Number(v) <= MAX_AMOUNT, message),
   );
 
 const startSchema = z.object({
